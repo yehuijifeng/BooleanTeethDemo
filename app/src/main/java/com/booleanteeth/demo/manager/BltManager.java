@@ -32,7 +32,6 @@ public class BltManager {
     /**
      * 设置成单例模式
      */
-
     private BltManager() {
     }
 
@@ -73,6 +72,9 @@ public class BltManager {
      */
     private BluetoothDeviceBean bluetoothDeviceBean;
 
+    /**
+     * 蓝牙状态接口
+     */
     private OnRegisterBltReceiver onRegisterBltReceiver;
 
     public interface OnRegisterBltReceiver {
@@ -143,6 +145,8 @@ public class BltManager {
      */
     public void unregisterReceiver(Context context) {
         context.unregisterReceiver(searchDevices);
+        if (getmBluetoothAdapter() != null)
+            getmBluetoothAdapter().cancelDiscovery();
     }
 
 
@@ -231,12 +235,22 @@ public class BltManager {
             //通过反射得到bltSocket对象
             //mBluetoothSocket = (BluetoothSocket) btDev.getClass().getMethod("createRfcommSocket", new Class[]{int.class}).invoke(btDev, 1);
             Log.d("blueTooth", "开始连接...");
-            if (!getmBluetoothSocket().isConnected())
+            //在建立之前调用
+            if (getmBluetoothAdapter().isDiscovering())
+                getmBluetoothAdapter().cancelDiscovery();
+            if (!getmBluetoothSocket().isConnected()) {
+                //你应当确保在调用connect()时设备没有执行搜索设备的操作。
+                // 如果搜索设备也在同时进行，那么将会显著地降低连接速率，并很大程度上会连接失败。
                 getmBluetoothSocket().connect();
-            else
+            } else
                 Log.d("blueTooth", "已经链接");
         } catch (Exception e) {
             Log.e("blueTooth", "...链接失败");
+            try {
+                getmBluetoothSocket().close();
+            } catch (IOException e1) {
+                e1.printStackTrace();
+            }
             e.printStackTrace();
         }
     }
@@ -246,11 +260,12 @@ public class BltManager {
      *
      * @param btDev
      */
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     public void createBond(BluetoothDevice btDev) {
         if (btDev.getBondState() == BluetoothDevice.BOND_NONE) {
             //如果这个设备取消了配对，则尝试配对
-            btDev.createBond();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                btDev.createBond();
+            }
         } else if (btDev.getBondState() == BluetoothDevice.BOND_BONDED) {
             //如果这个设备已经配对完成，则尝试连接
             connect(btDev);
@@ -264,21 +279,10 @@ public class BltManager {
      *
      * @param address
      */
-    @TargetApi(Build.VERSION_CODES.KITKAT)
     public void autoConnect(String address) {
         if (getmBluetoothAdapter().isDiscovering()) getmBluetoothAdapter().cancelDiscovery();
         BluetoothDevice btDev = getmBluetoothAdapter().getRemoteDevice(address);
-        try {
-            if (btDev.getBondState() == BluetoothDevice.BOND_NONE) {
-                //如果该设备没有配对，则配对
-                btDev.createBond();
-            } else if (btDev.getBondState() == BluetoothDevice.BOND_BONDED) {
-                //如果设备配对完成，则链接
-                connect(btDev);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        connect(btDev);
     }
 
     /**
@@ -322,10 +326,14 @@ public class BltManager {
      * 如果没打开，需要让用户打开蓝牙：
      */
     public void checkBleDevice(Context context) {
-        if (getmBluetoothAdapter() == null || !getmBluetoothAdapter().isEnabled()) {
-            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-            enableBtIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(enableBtIntent);
+        if (getmBluetoothAdapter() == null) {
+            if (!getmBluetoothAdapter().isEnabled()) {
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                enableBtIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(enableBtIntent);
+            }
+        } else {
+            Log.i("blueTooth", "该手机不支持蓝牙");
         }
     }
 

@@ -1,4 +1,4 @@
-package com.booleanteeth.demo;
+package com.bluetooth.demo;
 
 import org.junit.Test;
 

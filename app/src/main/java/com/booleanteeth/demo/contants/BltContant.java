@@ -6,6 +6,7 @@ import java.util.UUID;
  * Created by LuHao on 2016/9/26.
  */
 public class BltContant {
+
     /**
      * 蓝牙UUID
      */
