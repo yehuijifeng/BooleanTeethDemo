@@ -13,9 +13,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
-import com.booleanteeth.demo.bean.BluetoothDeviceBean;
+import com.booleanteeth.demo.appliaction.BltAppliaction;
 import com.booleanteeth.demo.contants.BltContant;
 
 import java.io.IOException;
@@ -63,36 +65,22 @@ public class BltManager {
     private BluetoothSocket mBluetoothSocket;
 
     /**
-     * 蓝牙搜索结果回调接口
-     */
-    private BluetoothAdapter.LeScanCallback leScanCallback;
-
-    /**
-     * 蓝牙信息实体类
-     */
-    private BluetoothDeviceBean bluetoothDeviceBean;
-
-    /**
      * 蓝牙状态接口
      */
     private OnRegisterBltReceiver onRegisterBltReceiver;
 
     public interface OnRegisterBltReceiver {
-        void onBluetoothDevice(BluetoothDevice device);
+        void onBluetoothDevice(BluetoothDevice device);//搜索到新设备
 
-        void onBltIng(BluetoothDevice device);
+        void onBltIng(BluetoothDevice device);//连接中
 
-        void onBltEnd(BluetoothDevice device);
+        void onBltEnd(BluetoothDevice device);//连接完成
 
-        void onBltNone(BluetoothDevice device);
+        void onBltNone(BluetoothDevice device);//未连接
     }
 
     public BluetoothAdapter getmBluetoothAdapter() {
         return mBluetoothAdapter;
-    }
-
-    public BluetoothDeviceBean getBluetoothDeviceBean() {
-        return bluetoothDeviceBean;
     }
 
     public BluetoothManager getBluetoothManager() {
@@ -118,8 +106,6 @@ public class BltManager {
         //获取BluetoothAdapter
         if (bluetoothManager != null)
             mBluetoothAdapter = bluetoothManager.getAdapter();
-        //检测蓝牙是否使用或者开启
-
     }
 
     /**
@@ -182,7 +168,6 @@ public class BltManager {
                     case BluetoothDevice.BOND_BONDED://配对结束
                         Log.d("BlueToothTestActivity", "完成配对");
                         onRegisterBltReceiver.onBltEnd(device);
-                        connect(device);//连接设备
                         break;
                     case BluetoothDevice.BOND_NONE://取消配对/未配对
                         Log.d("BlueToothTestActivity", "取消配对");
@@ -218,7 +203,7 @@ public class BltManager {
             for (Iterator<BluetoothDevice> it = devices.iterator(); it.hasNext(); ) {
                 BluetoothDevice device = it.next();
                 //自动连接已有蓝牙设备
-                createBond(device);
+                createBond(device, null);
             }
         }
     }
@@ -229,9 +214,11 @@ public class BltManager {
      * @param btDev
      * @return
      */
-    private void connect(BluetoothDevice btDev) {
+    private void connect(BluetoothDevice btDev, Handler handler) {
         try {
             mBluetoothSocket = btDev.createRfcommSocketToServiceRecord(BltContant.SPP_UUID);
+            if (mBluetoothSocket != null)
+                BltAppliaction.bluetoothSocket = mBluetoothSocket;
             //通过反射得到bltSocket对象
             //mBluetoothSocket = (BluetoothSocket) btDev.getClass().getMethod("createRfcommSocket", new Class[]{int.class}).invoke(btDev, 1);
             Log.d("blueTooth", "开始连接...");
@@ -242,8 +229,13 @@ public class BltManager {
                 //你应当确保在调用connect()时设备没有执行搜索设备的操作。
                 // 如果搜索设备也在同时进行，那么将会显著地降低连接速率，并很大程度上会连接失败。
                 getmBluetoothSocket().connect();
-            } else
-                Log.d("blueTooth", "已经链接");
+            }
+            Log.d("blueTooth", "已经链接");
+            if (handler == null) return;
+            Message message = new Message();
+            message.what = 4;
+            message.obj = btDev;
+            handler.sendMessage(message);
         } catch (Exception e) {
             Log.e("blueTooth", "...链接失败");
             try {
@@ -260,7 +252,7 @@ public class BltManager {
      *
      * @param btDev
      */
-    public void createBond(BluetoothDevice btDev) {
+    public void createBond(BluetoothDevice btDev, Handler handler) {
         if (btDev.getBondState() == BluetoothDevice.BOND_NONE) {
             //如果这个设备取消了配对，则尝试配对
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -268,7 +260,7 @@ public class BltManager {
             }
         } else if (btDev.getBondState() == BluetoothDevice.BOND_BONDED) {
             //如果这个设备已经配对完成，则尝试连接
-            connect(btDev);
+            connect(btDev, handler);
         }
     }
 
@@ -279,10 +271,10 @@ public class BltManager {
      *
      * @param address
      */
-    public void autoConnect(String address) {
+    public void autoConnect(String address, Handler handler) {
         if (getmBluetoothAdapter().isDiscovering()) getmBluetoothAdapter().cancelDiscovery();
         BluetoothDevice btDev = getmBluetoothAdapter().getRemoteDevice(address);
-        connect(btDev);
+        connect(btDev, handler);
     }
 
     /**
@@ -326,7 +318,7 @@ public class BltManager {
      * 如果没打开，需要让用户打开蓝牙：
      */
     public void checkBleDevice(Context context) {
-        if (getmBluetoothAdapter() == null) {
+        if (getmBluetoothAdapter() != null) {
             if (!getmBluetoothAdapter().isEnabled()) {
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 enableBtIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -407,16 +399,6 @@ public class BltManager {
     public BluetoothGatt connectBleDevice(Context context, BluetoothDevice device, BluetoothGattCallback mCallback) {
         BluetoothGatt mBluetoothGatt = device.connectGatt(context, false, mCallback);
         return mBluetoothGatt;
-    }
-
-    private void getBltDeviceBean(BluetoothDevice device) {
-        bluetoothDeviceBean = new BluetoothDeviceBean();
-        bluetoothDeviceBean.setAddress(device.getAddress());
-        bluetoothDeviceBean.setBondState(device.getBondState());
-        bluetoothDeviceBean.setName(device.getName());
-        bluetoothDeviceBean.setType(device.getType());
-        bluetoothDeviceBean.setUuids(device.getUuids());
-        bluetoothDeviceBean.setBluetoothClass(device.getBluetoothClass());
     }
 
 }
