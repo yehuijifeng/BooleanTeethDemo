@@ -1,6 +1,7 @@
 package com.booleanteeth.demo.activity;
 
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
@@ -48,6 +49,7 @@ public class BltSocketAcivity extends AppCompatActivity implements View.OnClickL
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.go_file_btn://发送文件
+                SendSocketService.sendMessageByFile(Environment.getExternalStorageDirectory()+"/test.gif");
                 break;
             case R.id.go_text_btn://发送文本消息
                 if (TextUtils.isEmpty(go_edit_text.getText().toString().trim())) return;
