@@ -4,11 +4,12 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="com.booleanteeth.demo.MainActivity">
+    tools:context=".activity.MainActivity">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <Button
@@ -23,7 +24,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="不被搜索到" />
+            android:text="可被搜索(300s)" />
+
+        <Button
+            android:id="@+id/create_service"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="创建连接" />
 
         <Switch
             android:id="@+id/blue_switch"
@@ -33,8 +41,30 @@
 
     </LinearLayout>
 
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@android:color/darker_gray"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ProgressBar
+            android:id="@+id/btl_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content" />
+
+        <TextView
+            android:id="@+id/blt_status_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="正在搜索附近的蓝牙"
+            android:textColor="@android:color/holo_blue_bright" />
+    </LinearLayout>
+
     <ListView
         android:id="@+id/blue_list"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
 </LinearLayout>
